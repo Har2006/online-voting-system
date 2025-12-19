@@ -1,14 +1,9 @@
-import { useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
 
 export default function AuthPage() {
-  const navigate = useNavigate();
-
   return (
-    <div>
-      <h1>Auth Page</h1>
-      <button onClick={() => navigate("/dashboard")}>
-        Go to Dashboard
-      </button>
-    </div>
+    <Layout title="Admin Login">
+      <p>Authorized administrators only.</p>
+    </Layout>
   );
 }

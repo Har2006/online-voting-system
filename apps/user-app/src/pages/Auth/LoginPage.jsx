@@ -44,28 +44,36 @@ const LoginPage = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const clearMessages = () => {
+  setError('');
+  setInfo('');
+};
+
   // Handle input change
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    setError('');
-  };
+const handleChange = (e) => {
+  clearMessages();
+  setFormData({
+    ...formData,
+    [e.target.name]: e.target.value,
+  });
+};
+
 
   // Handle OTP input
-  const handleOtpChange = (index, value) => {
-    if (value.length <= 1 && /^\d*$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
+const handleOtpChange = (index, value) => {
+  if (!/^\d?$/.test(value)) return;
 
-      // Auto-focus next input
-      if (value && index < 5) {
-        document.getElementById(`otp-input-${index + 1}`)?.focus();
-      }
-    }
-  };
+  clearMessages();
+
+  const newOtp = [...otp];
+  newOtp[index] = value;
+  setOtp(newOtp);
+
+  if (value && index < 5) {
+    document.getElementById(`otp-input-${index + 1}`)?.focus();
+  }
+};
+
 
   // Handle OTP paste
   const handleOtpPaste = (e) => {
@@ -95,103 +103,78 @@ const LoginPage = () => {
 
   // Handle login
   const handleLogin = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
+  e.preventDefault();
 
-    setLoading(true);
-    setError('');
+  if (!validateForm()) return;
 
-    try {
-      // TODO: Replace with actual API call
-      // const response = await loginService.verifyCredentials(formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+  setLoading(true);
+  clearMessages();
 
-      // For demo - simulate success
-      const mockSuccess = true;
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      if (mockSuccess) {
-        // Generate OTP (in real app, backend sends this)
-        const mockOtp = '123456';
-        console.log('🔑 OTP:', mockOtp); // For testing
+    // UI-only success
+    setInfo('OTP sent successfully');
+    setStep('otp');
+    setOtpTimer(300);
+    setCanResend(false);
+  } catch {
+    setError('Login failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-        setInfo(`OTP sent to your registered email/mobile`);
-        setStep('otp');
-        setOtpTimer(300);
-        setCanResend(false);
-      } else {
-        setError('Invalid credentials. Please try again.');
-      }
-    } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Handle OTP verification
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
+const handleVerifyOtp = async (e) => {
+  e.preventDefault();
 
-    const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      setError('Please enter complete OTP');
-      return;
+  const otpCode = otp.join('');
+  if (otpCode.length !== 6) {
+    setError('Please enter the complete OTP');
+    return;
+  }
+
+  setLoading(true);
+  clearMessages();
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    if (otpCode === '123456') {
+      setInfo('Login successful! Redirecting...');
+      setTimeout(() => navigate('/dashboard'), 1000);
+    } else {
+      setError('Invalid OTP. Please try again.');
     }
+  } finally {
+    setLoading(false);
+  }
+};
 
-    setLoading(true);
-    setError('');
-
-    try {
-      // TODO: Replace with actual API call
-      // const response = await otpService.verifyOtp(otpCode);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // For demo - check if OTP is 123456
-      if (otpCode === '123456') {
-        setInfo('Login successful! Redirecting...');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1000);
-      } else {
-        setError('Invalid OTP. Please try again.');
-        setLoading(false);
-      }
-    } catch (err) {
-      setError(err.message || 'Verification failed. Please try again.');
-      setLoading(false);
-    }
-  };
 
   // Handle resend OTP
-  const handleResendOtp = async () => {
-    if (!canResend) return;
+const handleResendOtp = async () => {
+  if (!canResend || loading) return;
 
-    setLoading(true);
-    setError('');
+  setLoading(true);
+  clearMessages();
 
-    try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const mockOtp = Math.floor(100000 + Math.random() * 900000);
-      console.log('🔑 New OTP:', mockOtp);
+    setInfo('New OTP sent');
+    setOtp(['', '', '', '', '', '']);
+    setOtpTimer(300);
+    setCanResend(false);
+  } catch {
+    setError('Failed to resend OTP');
+  } finally {
+    setLoading(false);
+  }
+};
 
-      setInfo('New OTP sent successfully!');
-      setOtpTimer(300);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
-    } catch (err) {
-      setError('Failed to resend OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Render login form
   const renderLoginForm = () => (
@@ -274,17 +257,19 @@ const LoginPage = () => {
     <div className="login-container">
       <div className="login-card otp-card">
         {/* Back Button */}
-        <button 
-          onClick={() => {
-            setStep('login');
-            setOtp(['', '', '', '', '', '']);
-            setError('');
-            setInfo('');
-          }}
-          className="back-button"
-        >
+          <button
+            disabled={loading}
+            onClick={() => {
+              if (loading) return;
+              setStep('login');
+              setOtp(['', '', '', '', '', '']);
+              clearMessages();
+            }}
+              className="back-button"
+          >
           ← Back to Login
-        </button>
+          </button>
+
 
         {/* Header */}
         <div className="login-header">
